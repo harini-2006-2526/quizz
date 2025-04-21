@@ -12,6 +12,7 @@
             --primary: #00fff0;
             --background: #0f0c29;
             --secondary: #302b63;
+            --error: #ff4444;
         }
 
         body {
@@ -60,7 +61,7 @@
             transform: scale(1.02);
         }
 
-        input, textarea {
+        input, textarea, select {
             width: 100%;
             padding: 0.8rem;
             margin: 0.5rem 0;
@@ -71,14 +72,14 @@
         }
 
         .timer {
-            color: #ff4444;
+            color: var(--error);
             font-size: 1.2em;
             margin-bottom: 1rem;
         }
 
         .question-box {
             background: #1a1a1a;
-            padding: 2rem;
+            padding: 1.5rem;
             margin: 1rem 0;
             border-radius: 8px;
             border: 1px solid var(--primary);
@@ -96,10 +97,24 @@
             cursor: pointer;
         }
 
-        .results-screen {
-            background: rgba(0, 0, 0, 0.9);
-            padding: 2rem;
-            border-radius: 10px;
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .feedback-section {
+            background: #1a1a1a;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
         }
 
         @keyframes fadeIn {
@@ -132,6 +147,7 @@
             <button class="btn" onclick="showView('create-quiz')">Create Quiz</button>
             <button class="btn" onclick="showView('join-quiz')">Join Quiz</button>
             <button class="btn" onclick="showView('results')">My Results</button>
+            <button class="btn" onclick="showView('my-quizzes')">My Quizzes (HR)</button>
             <button class="btn" onclick="logout()">Logout</button>
         </div>
     </div>
@@ -173,6 +189,23 @@
         </div>
     </div>
 
+    <!-- HR Quizzes View -->
+    <div id="my-quizzes-view" class="view">
+        <div class="box">
+            <div id="hr-quizzes-content"></div>
+            <button class="btn" onclick="showView('dashboard')">← Back</button>
+        </div>
+    </div>
+
+    <!-- Feedback Modal -->
+    <div id="feedback-modal" class="modal" style="display: none;">
+        <div class="box">
+            <h2>Participant Results</h2>
+            <div id="participant-list"></div>
+            <button class="btn" onclick="closeFeedbackModal()">Close</button>
+        </div>
+    </div>
+
     <script>
         // Firebase Configuration
         const firebaseConfig = {
@@ -196,7 +229,7 @@
         let timer = null;
         let userAnswers = [];
 
-        // Auth Functions
+        // Authentication Functions
         auth.onAuthStateChanged(async user => {
             if (user) {
                 currentUser = user;
@@ -242,7 +275,7 @@
             auth.signOut();
         }
 
-        // Quiz Creation
+        // Quiz Creation Functions
         function addQuestion() {
             const container = document.getElementById('questions-container');
             const div = document.createElement('div');
@@ -281,7 +314,8 @@
                 questions: questions,
                 code: Math.random().toString(36).substr(2, 8).toUpperCase(),
                 createdBy: currentUser.uid,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                creatorName: currentUser.displayName || currentUser.email
             };
 
             await db.collection('quizzes').add(quizData);
@@ -289,7 +323,7 @@
             showView('dashboard');
         }
 
-        // Quiz Taking
+        // Quiz Taking Functions
         async function startQuiz() {
             const code = document.getElementById('quiz-code').value.toUpperCase();
             const snapshot = await db.collection('quizzes').where('code', '==', code).get();
@@ -388,31 +422,111 @@
                             <p>Correct answer: ${a.correct}</p>
                         </div>
                     `).join('')}
+                    <button class="btn" onclick="showView('dashboard')">Back to Dashboard</button>
                 </div>
             `;
         }
 
-        // View Management
-        function showView(viewId) {
+        // HR Feedback Functions
+        async function showView(viewId) {
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active-view'));
             document.getElementById(`${viewId}-view`).classList.add('active-view');
             
-            if(viewId === 'results') loadResults();
+            if(viewId === 'results') await loadUserResults();
+            if(viewId === 'my-quizzes') await loadHRQuizzes();
         }
 
-        async function loadResults() {
+        async function loadHRQuizzes() {
+            const content = document.getElementById('hr-quizzes-content');
+            content.innerHTML = '<h2>My Created Quizzes</h2>';
+            
+            const quizzes = await db.collection('quizzes')
+                .where('createdBy', '==', currentUser.uid)
+                .get();
+
+            quizzes.forEach(doc => {
+                const quiz = doc.data();
+                content.innerHTML += `
+                    <div class="question-box">
+                        <h3>${quiz.title}</h3>
+                        <p>Code: ${quiz.code}</p>
+                        <button class="btn" onclick="viewParticipantResults('${doc.id}')">
+                            View Participants
+                        </button>
+                    </div>
+                `;
+            });
+        }
+
+        async function viewParticipantResults(quizId) {
+            const modal = document.getElementById('feedback-modal');
+            const participantList = document.getElementById('participant-list');
+            participantList.innerHTML = 'Loading...';
+            modal.style.display = 'flex';
+
+            const results = await db.collection('results')
+                .where('quizId', '==', quizId)
+                .get();
+
+            participantList.innerHTML = '';
+            
+            for (const doc of results.docs) {
+                const result = doc.data();
+                const userDoc = await db.collection('users').doc(result.userId).get();
+                const userData = userDoc.data();
+
+                participantList.innerHTML += `
+                    <div class="question-box">
+                        <h4>${userData.name}</h4>
+                        <p>Score: ${result.score}/100</p>
+                        <textarea id="feedback-${doc.id}" 
+                                  placeholder="Enter feedback for candidate">
+                            ${result.feedback || ''}
+                        </textarea>
+                        <button class="btn" onclick="saveFeedback('${doc.id}')">
+                            Save Feedback
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        async function saveFeedback(resultId) {
+            const feedback = document.getElementById(`feedback-${resultId}`).value;
+            try {
+                await db.collection('results').doc(resultId).update({ feedback });
+                alert('Feedback saved successfully!');
+            } catch (error) {
+                alert('Error saving feedback: ' + error.message);
+            }
+        }
+
+        function closeFeedbackModal() {
+            document.getElementById('feedback-modal').style.display = 'none';
+        }
+
+        async function loadUserResults() {
             const results = await db.collection('results')
                 .where('userId', '==', currentUser.uid)
                 .get();
 
             document.getElementById('results-content').innerHTML = results.docs
-                .map(doc => `
-                    <div class="question-box">
-                        <h3>Score: ${doc.data().score}</h3>
-                        ${doc.data().feedback ? `<p>Feedback: ${doc.data().feedback}</p>` : ''}
-                    </div>
-                `).join('');
+                .map(doc => {
+                    const data = doc.data();
+                    return `
+                        <div class="question-box">
+                            <h3>Score: ${data.score}/100</h3>
+                            ${data.feedback ? `
+                                <div class="feedback-section">
+                                    <h4>HR Feedback:</h4>
+                                    <p>${data.feedback}</p>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }).join('');
         }
     </script>
 </body>
 </html>
+          
