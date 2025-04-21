@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>QuizQuest HRM Platform</title>
+    <title>QuizQuest HR Platform</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.6.8/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.8/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.8/firebase-firestore-compat.js"></script>
     <style>
-        /* Integrated CSS for all components */
+        /* Integrated Styles */
         body {
             margin: 0;
             font-family: 'Orbitron', sans-serif;
@@ -17,27 +17,69 @@
             min-height: 100vh;
         }
 
-        .view {
-            display: none;
-            padding: 2rem;
-            max-width: 800px;
+        .container {
+            max-width: 1200px;
             margin: 0 auto;
-        }
-
-        .active-view {
-            display: block;
-            animation: fadeIn 0.5s ease-in;
-        }
-
-        .box {
-            background: rgba(0, 0, 0, 0.85);
             padding: 2rem;
-            border-radius: 15px;
-            box-shadow: 0 0 30px #00fff0;
-            margin: 2rem auto;
         }
 
-        input, button, select {
+        .dashboard {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 2rem;
+        }
+
+        .nav-panel {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 1rem;
+            border-radius: 10px;
+            height: fit-content;
+        }
+
+        .content-area {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 2rem;
+            border-radius: 10px;
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            background: #00fff0;
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background: #00cfc4;
+            transform: scale(1.02);
+        }
+
+        .quiz-card {
+            background: #1a1a1a;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border-radius: 8px;
+            border: 1px solid #00fff0;
+        }
+
+        .modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 2rem;
+            border-radius: 10px;
+            z-index: 1000;
+        }
+
+        input, textarea {
             width: 100%;
             padding: 0.8rem;
             margin: 0.5rem 0;
@@ -45,123 +87,40 @@
             border: 1px solid #00fff0;
             border-radius: 8px;
             color: #fff;
-            font-family: 'Orbitron';
-        }
-
-        button {
-            background: #00fff0;
-            color: #000;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        button:hover {
-            background: #00cfc4;
-            transform: scale(1.02);
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .navigation {
-            text-align: center;
-            padding: 1rem;
-        }
-
-        .nav-link {
-            color: #00fff0;
-            margin: 0 1rem;
-            cursor: pointer;
-            text-decoration: none;
-        }
-
-        .question {
-            margin: 1rem 0;
-            padding: 1rem;
-            border: 1px solid #00fff0;
-            border-radius: 8px;
         }
     </style>
 </head>
 <body>
-    <!-- Views Container -->
-    <div id="views">
-        <!-- Landing View -->
-        <div id="landing" class="view active-view">
-            <div class="box">
-                <h1>Welcome to QuizQuest HRM</h1>
-                <button onclick="showView('login')">Login</button>
-                <button onclick="showView('signup')">Sign Up</button>
+    <div class="container">
+        <div id="auth-section" style="display: none;">
+            <!-- Login/Signup Form -->
+            <div class="modal" id="auth-modal">
+                <h2 id="auth-title">Login</h2>
+                <input type="email" id="auth-email" placeholder="Email">
+                <input type="password" id="auth-password" placeholder="Password">
+                <input type="text" id="auth-name" placeholder="Full Name" style="display: none;">
+                <button class="btn" onclick="handleAuth()">Submit</button>
+                <p style="text-align: center; margin-top: 1rem;">
+                    <a href="#" onclick="toggleAuthMode()" style="color: #00fff0;">
+                        <span id="auth-toggle-text">Create new account</span>
+                    </a>
+                </p>
             </div>
         </div>
 
-        <!-- Login View -->
-        <div id="login" class="view">
-            <div class="box">
-                <h2>Login</h2>
-                <input type="email" id="loginEmail" placeholder="Email">
-                <input type="password" id="loginPassword" placeholder="Password">
-                <button onclick="loginUser()">Login</button>
-                <p class="nav-link" onclick="showView('landing')">← Back to Home</p>
-            </div>
-        </div>
+        <div id="dashboard" style="display: none;">
+            <div class="dashboard">
+                <div class="nav-panel">
+                    <h2>QuizQuest</h2>
+                    <button class="btn" onclick="showContent('create-quiz')">Create Quiz</button>
+                    <button class="btn" onclick="showContent('my-quizzes')">My Quizzes</button>
+                    <button class="btn" onclick="showContent('results')">My Results</button>
+                    <button class="btn" onclick="logout()">Logout</button>
+                </div>
 
-        <!-- Signup View -->
-        <div id="signup" class="view">
-            <div class="box">
-                <h2>Sign Up</h2>
-                <input type="text" id="signupName" placeholder="Full Name">
-                <input type="email" id="signupEmail" placeholder="Email">
-                <input type="password" id="signupPassword" placeholder="Password">
-                <input type="password" id="signupConfirm" placeholder="Confirm Password">
-                <button onclick="signupUser()">Create Account</button>
-                <p class="nav-link" onclick="showView('landing')">← Back to Home</p>
-            </div>
-        </div>
-
-        <!-- Dashboard View -->
-        <div id="dashboard" class="view">
-            <div class="box">
-                <h2>Dashboard</h2>
-                <button onclick="showView('createQuiz')">Create New Quiz</button>
-                <button onclick="showView('joinQuiz')">Join Quiz</button>
-                <button onclick="showView('results')">View Results</button>
-                <button onclick="logoutUser()">Logout</button>
-            </div>
-        </div>
-
-        <!-- Quiz Creation View -->
-        <div id="createQuiz" class="view">
-            <div class="box">
-                <h2>Create Quiz</h2>
-                <input type="text" id="quizTitle" placeholder="Quiz Title">
-                <div id="questionsContainer"></div>
-                <button onclick="addQuestion()">Add Question</button>
-                <button onclick="saveQuiz()">Save Quiz</button>
-                <p class="nav-link" onclick="showView('dashboard')">← Back to Dashboard</p>
-            </div>
-        </div>
-        <a href="enter-code.html" class="btn">Start Quiz</a>
-
-        <!-- Quiz Session View -->
-        <div id="quizSession" class="view">
-            <div class="box">
-                <h2 id="quizTitleDisplay"></h2>
-                <div id="timer">Time Left: --</div>
-                <div id="questionDisplay"></div>
-                <div id="optionsContainer"></div>
-                <button id="nextQuestion" onclick="nextQuestion()">Next →</button>
-            </div>
-        </div>
-
-        <!-- Results View -->
-        <div id="results" class="view">
-            <div class="box">
-                <h2>Your Results</h2>
-                <div id="resultsList"></div>
-                <p class="nav-link" onclick="showView('dashboard')">← Back to Dashboard</p>
+                <div class="content-area" id="content-area">
+                    <!-- Content will be loaded here -->
+                </div>
             </div>
         </div>
     </div>
@@ -182,65 +141,120 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        // Application State
         let currentUser = null;
-        let currentQuiz = null;
-        let currentQuestionIndex = 0;
-        let timer = null;
+        let isHR = false;
 
-        // View Management
-        function showView(viewId) {
-            document.querySelectorAll('.view').forEach(v => v.classList.remove('active-view'));
-            document.getElementById(viewId).classList.add('active-view');
-        }
-
-        // Auth Management
-        auth.onAuthStateChanged(user => {
-            currentUser = user;
-            if (user) showView('dashboard');
-            else showView('landing');
+        // Auth State Listener
+        auth.onAuthStateChanged(async user => {
+            if (user) {
+                currentUser = user;
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                isHR = userDoc.data()?.isHR || false;
+                showDashboard();
+            } else {
+                showAuth();
+            }
         });
 
-        async function loginUser() {
-            const email = document.getElementById('loginEmail').value;
-            const password = document.getElementById('loginPassword').value;
-            
+        function showAuth(isSignup = false) {
+            document.getElementById('dashboard').style.display = 'none';
+            document.getElementById('auth-section').style.display = 'block';
+            document.getElementById('auth-name').style.display = isSignup ? 'block' : 'none';
+            document.getElementById('auth-title').textContent = isSignup ? 'Sign Up' : 'Login';
+            document.getElementById('auth-toggle-text').textContent = isSignup 
+                ? 'Already have an account? Login' 
+                : 'Create new account';
+        }
+
+        async function handleAuth() {
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+            const name = document.getElementById('auth-name').value;
+
             try {
-                await auth.signInWithEmailAndPassword(email, password);
+                if (document.getElementById('auth-title').textContent === 'Sign Up') {
+                    const userCred = await auth.createUserWithEmailAndPassword(email, password);
+                    await db.collection('users').doc(userCred.user.uid).set({
+                        name: name,
+                        email: email,
+                        isHR: false
+                    });
+                } else {
+                    await auth.signInWithEmailAndPassword(email, password);
+                }
             } catch (error) {
                 alert(error.message);
             }
         }
 
-        async function signupUser() {
-            const email = document.getElementById('signupEmail').value;
-            const password = document.getElementById('signupPassword').value;
-            const name = document.getElementById('signupName').value;
-            const confirm = document.getElementById('signupConfirm').value;
+        function toggleAuthMode() {
+            const isSignup = document.getElementById('auth-title').textContent === 'Login';
+            showAuth(isSignup);
+        }
 
-            if (password !== confirm) return alert("Passwords don't match!");
+        function showDashboard() {
+            document.getElementById('auth-section').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            showContent(isHR ? 'my-quizzes' : 'results');
+        }
 
-            try {
-                const userCred = await auth.createUserWithEmailAndPassword(email, password);
-                await db.collection('users').doc(userCred.user.uid).set({
-                    name: name,
-                    email: email,
-                    isHR: false
-                });
-            } catch (error) {
-                alert(error.message);
+        async function showContent(section) {
+            const contentArea = document.getElementById('content-area');
+            contentArea.innerHTML = '';
+
+            switch(section) {
+                case 'create-quiz':
+                    contentArea.innerHTML = `
+                        <h2>Create New Quiz</h2>
+                        <input type="text" id="quiz-title" placeholder="Quiz Title">
+                        <div id="questions-container"></div>
+                        <button class="btn" onclick="addQuestion()">Add Question</button>
+                        <button class="btn" onclick="saveQuiz()">Save Quiz</button>
+                    `;
+                    break;
+
+                case 'my-quizzes':
+                    const quizzes = await db.collection('quizzes')
+                        .where('createdBy', '==', currentUser.uid)
+                        .get();
+
+                    contentArea.innerHTML = '<h2>My Quizzes</h2>';
+                    quizzes.forEach(doc => {
+                        const quiz = doc.data();
+                        contentArea.innerHTML += `
+                            <div class="quiz-card">
+                                <h3>${quiz.title}</h3>
+                                <p>Code: ${quiz.code}</p>
+                                <button class="btn" onclick="viewResults('${doc.id}')">View Results</button>
+                            </div>
+                        `;
+                    });
+                    break;
+
+                case 'results':
+                    const results = await db.collection('results')
+                        .where('userId', '==', currentUser.uid)
+                        .get();
+
+                    contentArea.innerHTML = '<h2>My Results</h2>';
+                    results.forEach(doc => {
+                        const result = doc.data();
+                        contentArea.innerHTML += `
+                            <div class="quiz-card">
+                                <h3>Score: ${result.score}</h3>
+                                ${result.feedback ? `<p>Feedback: ${result.feedback}</p>` : ''}
+                            </div>
+                        `;
+                    });
+                    break;
             }
         }
 
-        function logoutUser() {
-            auth.signOut();
-        }
-
-        // Quiz Management
+        // Quiz Creation Functions
         function addQuestion() {
-            const container = document.getElementById('questionsContainer');
+            const container = document.getElementById('questions-container');
             const div = document.createElement('div');
-            div.className = 'question';
+            div.className = 'quiz-card';
             div.innerHTML = `
                 <input type="text" placeholder="Question">
                 <input type="text" placeholder="Option 1">
@@ -260,19 +274,18 @@
         }
 
         async function saveQuiz() {
-            const questions = Array.from(document.getElementsByClassName('question')).map(q => {
-                const inputs = q.querySelectorAll('input');
-                const select = q.querySelector('select');
+            const questions = Array.from(document.querySelectorAll('#questions-container .quiz-card')).map(card => {
+                const inputs = card.querySelectorAll('input');
                 return {
                     question: inputs[0].value,
                     options: [inputs[1].value, inputs[2].value, inputs[3].value, inputs[4].value],
-                    correctAnswer: parseInt(select.value),
+                    correctAnswer: parseInt(card.querySelector('select').value),
                     time: parseInt(inputs[5].value)
                 };
             });
 
             const quizData = {
-                title: document.getElementById('quizTitle').value,
+                title: document.getElementById('quiz-title').value,
                 questions: questions,
                 code: Math.random().toString(36).substr(2, 8).toUpperCase(),
                 createdBy: currentUser.uid,
@@ -281,12 +294,59 @@
 
             await db.collection('quizzes').add(quizData);
             alert(`Quiz created! Code: ${quizData.code}`);
-            showView('dashboard');
+            showContent('my-quizzes');
         }
 
-        // Start the application
-        showView('landing');
+        // Results Viewing
+        async function viewResults(quizId) {
+            const results = await db.collection('results')
+                .where('quizId', '==', quizId)
+                .get();
+
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <h2>Participant Results</h2>
+                <div id="results-list"></div>
+                <button class="btn" onclick="this.parentElement.remove()">Close</button>
+            `;
+
+            results.forEach(async doc => {
+                const result = doc.data();
+                const userDoc = await db.collection('users').doc(result.userId).get();
+                
+                const resultDiv = document.createElement('div');
+                resultDiv.className = 'quiz-card';
+                resultDiv.innerHTML = `
+                    <h3>${userDoc.data().name}</h3>
+                    <p>Score: ${result.score}</p>
+                    <textarea id="feedback-${doc.id}" placeholder="Enter feedback">${result.feedback || ''}</textarea>
+                    <button class="btn" onclick="saveFeedback('${doc.id}')">Save Feedback</button>
+                `;
+                modal.querySelector('#results-list').appendChild(resultDiv);
+            });
+
+            document.body.appendChild(modal);
+        }
+
+        async function saveFeedback(resultId) {
+            const feedback = document.getElementById(`feedback-${resultId}`).value;
+            await db.collection('results').doc(resultId).update({ feedback });
+            alert('Feedback saved!');
+        }
+
+        function logout() {
+            auth.signOut();
+        }
+
+        // Initial Setup
+        auth.onAuthStateChanged(user => {
+            if (!user) showAuth();
+        });
     </script>
 </body>
 </html>
-  
+
+       
+
+        
