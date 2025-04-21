@@ -2,145 +2,290 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Dashboard | HRM Quiz</title>
+    <title>QuizQuest HRM Platform</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.6.8/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.8/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.8/firebase-firestore-compat.js"></script>
     <style>
+        /* Integrated CSS for all components */
         body {
             margin: 0;
             font-family: 'Orbitron', sans-serif;
             background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            overflow: hidden;
             color: #00fff0;
+            min-height: 100vh;
         }
 
-        .box {
-            background: rgba(0, 0, 0, 0.85);
-            padding: 50px;
-            border-radius: 15px;
-            box-shadow: 0 0 30px #00fff0;
-            width: 500px;
-            text-align: center;
-            animation: fadeIn 1s ease-in-out;
-        }
-
-        @keyframes fadeIn {
-            0% {
-                opacity: 0;
-                transform: scale(0.9);
-            }
-            100% {
-                opacity: 1;
-                transform: scale(1);
-            }
-        }
-
-        h1 {
-            margin-bottom: 10px;
-        }
-
-        p {
-            margin-bottom: 30px;
-            color: #ccc;
-        }
-
-        .btn {
-            display: inline-block;
-            padding: 12px 30px;
-            margin: 10px;
-            background-color: #00fff0;
-            color: #000;
-            font-weight: bold;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            text-decoration: none;
-            transition: all 0.3s ease;
-        }
-
-        .btn:hover {
-            background-color: #00cfc4;
-            transform: scale(1.05);
-        }
-    </style>
-</head>
-<head>
-    <meta charset="UTF-8">
-    <title>QuizQuest | HR Assessment Platform</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/style.css">
-    <style>
-        /* Additional Index-specific styles */
-        .hero {
-            text-align: center;
-            padding: 4rem 2rem;
+        .view {
+            display: none;
+            padding: 2rem;
             max-width: 800px;
             margin: 0 auto;
         }
 
-        .features {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 2rem;
+        .active-view {
+            display: block;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        .box {
+            background: rgba(0, 0, 0, 0.85);
             padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 0 30px #00fff0;
+            margin: 2rem auto;
         }
 
-        .feature-card {
-            background: rgba(0, 0, 0, 0.7);
-            padding: 1.5rem;
-            border-radius: 10px;
+        input, button, select {
+            width: 100%;
+            padding: 0.8rem;
+            margin: 0.5rem 0;
+            background: #1c1c1c;
             border: 1px solid #00fff0;
-            transition: transform 0.3s ease;
+            border-radius: 8px;
+            color: #fff;
+            font-family: 'Orbitron';
         }
 
-        .feature-card:hover {
-            transform: translateY(-5px);
+        button {
+            background: #00fff0;
+            color: #000;
+            cursor: pointer;
+            transition: all 0.3s ease;
         }
 
-        .cta-buttons {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-            margin-top: 3rem;
+        button:hover {
+            background: #00cfc4;
+            transform: scale(1.02);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .navigation {
+            text-align: center;
+            padding: 1rem;
+        }
+
+        .nav-link {
+            color: #00fff0;
+            margin: 0 1rem;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .question {
+            margin: 1rem 0;
+            padding: 1rem;
+            border: 1px solid #00fff0;
+            border-radius: 8px;
         }
     </style>
 </head>
 <body>
-    <div class="hero">
-        <h1>Welcome to QuizQuest</h1>
-        <p>Revolutionary HR Assessment Platform</p>
-        <div class="cta-buttons">
-            <a href="/login.html" class="btn">Login</a>
-            <a href="/signup.html" class="btn">Sign Up</a>
+    <!-- Views Container -->
+    <div id="views">
+        <!-- Landing View -->
+        <div id="landing" class="view active-view">
+            <div class="box">
+                <h1>Welcome to QuizQuest HRM</h1>
+                <button onclick="showView('login')">Login</button>
+                <button onclick="showView('signup')">Sign Up</button>
+            </div>
+        </div>
+
+        <!-- Login View -->
+        <div id="login" class="view">
+            <div class="box">
+                <h2>Login</h2>
+                <input type="email" id="loginEmail" placeholder="Email">
+                <input type="password" id="loginPassword" placeholder="Password">
+                <button onclick="loginUser()">Login</button>
+                <p class="nav-link" onclick="showView('landing')">← Back to Home</p>
+            </div>
+        </div>
+
+        <!-- Signup View -->
+        <div id="signup" class="view">
+            <div class="box">
+                <h2>Sign Up</h2>
+                <input type="text" id="signupName" placeholder="Full Name">
+                <input type="email" id="signupEmail" placeholder="Email">
+                <input type="password" id="signupPassword" placeholder="Password">
+                <input type="password" id="signupConfirm" placeholder="Confirm Password">
+                <button onclick="signupUser()">Create Account</button>
+                <p class="nav-link" onclick="showView('landing')">← Back to Home</p>
+            </div>
+        </div>
+
+        <!-- Dashboard View -->
+        <div id="dashboard" class="view">
+            <div class="box">
+                <h2>Dashboard</h2>
+                <button onclick="showView('createQuiz')">Create New Quiz</button>
+                <button onclick="showView('joinQuiz')">Join Quiz</button>
+                <button onclick="showView('results')">View Results</button>
+                <button onclick="logoutUser()">Logout</button>
+            </div>
+        </div>
+
+        <!-- Quiz Creation View -->
+        <div id="createQuiz" class="view">
+            <div class="box">
+                <h2>Create Quiz</h2>
+                <input type="text" id="quizTitle" placeholder="Quiz Title">
+                <div id="questionsContainer"></div>
+                <button onclick="addQuestion()">Add Question</button>
+                <button onclick="saveQuiz()">Save Quiz</button>
+                <p class="nav-link" onclick="showView('dashboard')">← Back to Dashboard</p>
+            </div>
+        </div>
+
+        <!-- Quiz Session View -->
+        <div id="quizSession" class="view">
+            <div class="box">
+                <h2 id="quizTitleDisplay"></h2>
+                <div id="timer">Time Left: --</div>
+                <div id="questionDisplay"></div>
+                <div id="optionsContainer"></div>
+                <button id="nextQuestion" onclick="nextQuestion()">Next →</button>
+            </div>
+        </div>
+
+        <!-- Results View -->
+        <div id="results" class="view">
+            <div class="box">
+                <h2>Your Results</h2>
+                <div id="resultsList"></div>
+                <p class="nav-link" onclick="showView('dashboard')">← Back to Dashboard</p>
+            </div>
         </div>
     </div>
 
-    <div class="features">
-        <div class="feature-card">
-            <h3>AI-Powered Assessments</h3>
-            <p>Smart quiz engine with adaptive questioning and real-time evaluation</p>
-        </div>
-        
-        <div class="feature-card">
-            <h3>Candidate Analytics</h3>
-            <p>Detailed performance reports with skill gap analysis</p>
-        </div>
-        
-        <div class="feature-card">
-            <h3>Secure Platform</h3>
-            <p>Military-grade encryption and anti-cheat protection</p>
-        </div>
-    </div>
-
-    <script src="/js/firebase-config.js"></script>
     <script>
-        // Redirect authenticated users
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDZzeTqBPd8gRQD5kwugokuHI4VCFytE_k",
+            authDomain: "quiz-91b9a.firebaseapp.com",
+            projectId: "quiz-91b9a",
+            storageBucket: "quiz-91b9a.appspot.com",
+            messagingSenderId: "860697559932",
+            appId: "1:860697559932:web:f782aad12ed9ebaaed1af9"
+        };
+
+        // Initialize Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // Application State
+        let currentUser = null;
+        let currentQuiz = null;
+        let currentQuestionIndex = 0;
+        let timer = null;
+
+        // View Management
+        function showView(viewId) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active-view'));
+            document.getElementById(viewId).classList.add('active-view');
+        }
+
+        // Auth Management
         auth.onAuthStateChanged(user => {
-            if(user) window.location.href = '/dashboard.html';
+            currentUser = user;
+            if (user) showView('dashboard');
+            else showView('landing');
         });
+
+        async function loginUser() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            try {
+                await auth.signInWithEmailAndPassword(email, password);
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        async function signupUser() {
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
+            const name = document.getElementById('signupName').value;
+            const confirm = document.getElementById('signupConfirm').value;
+
+            if (password !== confirm) return alert("Passwords don't match!");
+
+            try {
+                const userCred = await auth.createUserWithEmailAndPassword(email, password);
+                await db.collection('users').doc(userCred.user.uid).set({
+                    name: name,
+                    email: email,
+                    isHR: false
+                });
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        function logoutUser() {
+            auth.signOut();
+        }
+
+        // Quiz Management
+        function addQuestion() {
+            const container = document.getElementById('questionsContainer');
+            const div = document.createElement('div');
+            div.className = 'question';
+            div.innerHTML = `
+                <input type="text" placeholder="Question">
+                <input type="text" placeholder="Option 1">
+                <input type="text" placeholder="Option 2">
+                <input type="text" placeholder="Option 3">
+                <input type="text" placeholder="Option 4">
+                <select>
+                    <option value="0">Correct Answer</option>
+                    <option value="1">Option 1</option>
+                    <option value="2">Option 2</option>
+                    <option value="3">Option 3</option>
+                    <option value="4">Option 4</option>
+                </select>
+                <input type="number" placeholder="Time (seconds)">
+            `;
+            container.appendChild(div);
+        }
+
+        async function saveQuiz() {
+            const questions = Array.from(document.getElementsByClassName('question')).map(q => {
+                const inputs = q.querySelectorAll('input');
+                const select = q.querySelector('select');
+                return {
+                    question: inputs[0].value,
+                    options: [inputs[1].value, inputs[2].value, inputs[3].value, inputs[4].value],
+                    correctAnswer: parseInt(select.value),
+                    time: parseInt(inputs[5].value)
+                };
+            });
+
+            const quizData = {
+                title: document.getElementById('quizTitle').value,
+                questions: questions,
+                code: Math.random().toString(36).substr(2, 8).toUpperCase(),
+                createdBy: currentUser.uid,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            await db.collection('quizzes').add(quizData);
+            alert(`Quiz created! Code: ${quizData.code}`);
+            showView('dashboard');
+        }
+
+        // Start the application
+        showView('landing');
     </script>
 </body>
 </html>
+  
