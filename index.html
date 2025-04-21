@@ -296,6 +296,167 @@
             alert(`Quiz created! Code: ${quizData.code}`);
             showContent('my-quizzes');
         }
+        async function startQuiz() {
+            const code = prompt("Enter Quiz Code:").toUpperCase();
+            if (!code) return;
+
+            try {
+                const snapshot = await db.collection('quizzes')
+                    .where('code', '==', code)
+                    .get();
+
+                if (snapshot.empty) {
+                    alert('Invalid quiz code!');
+                    return;
+                }
+
+                const quizId = snapshot.docs[0].id;
+                startQuizSession(quizId);
+            } catch (error) {
+                alert('Error starting quiz: ' + error.message);
+            }
+        }
+
+        async function startQuizSession(quizId) {
+            const quizDoc = await db.collection('quizzes').doc(quizId).get();
+            const quizData = quizDoc.data();
+            let currentQuestionIndex = 0;
+            let userAnswers = [];
+            
+            // Hide dashboard
+            document.getElementById('dashboard').style.display = 'none';
+            
+            // Create quiz container
+            const quizContainer = document.createElement('div');
+            quizContainer.className = 'quiz-container';
+            quizContainer.innerHTML = `
+                <h2>${quizData.title}</h2>
+                <div class="timer" id="timer"></div>
+                <div id="question-container"></div>
+            `;
+            document.body.appendChild(quizContainer);
+
+            const showQuestion = (index) => {
+                const question = quizData.questions[index];
+                const questionDiv = document.createElement('div');
+                questionDiv.className = 'question-container';
+                questionDiv.innerHTML = `
+                    <h3>Question ${index + 1}: ${question.question}</h3>
+                    <div id="options-container"></div>
+                `;
+
+                question.options.forEach((option, i) => {
+                    const optionBtn = document.createElement('button');
+                    optionBtn.className = 'option-btn';
+                    optionBtn.textContent = option;
+                    optionBtn.onclick = () => handleAnswer(option, question.correctAnswer);
+                    questionDiv.querySelector('#options-container').appendChild(optionBtn);
+                });
+
+                quizContainer.querySelector('#question-container').replaceChildren(questionDiv);
+                startTimer(question.time, index);
+            };
+
+            const startTimer = (seconds, index) => {
+                let timeLeft = seconds;
+                const timerElement = quizContainer.querySelector('#timer');
+                
+                const timer = setInterval(() => {
+                    timerElement.textContent = `Time Left: ${timeLeft}s`;
+                    if(timeLeft <= 0) {
+                        clearInterval(timer);
+                        handleTimeout(index);
+                    }
+                    timeLeft--;
+                }, 1000);
+            };
+
+            const handleAnswer = (selectedAnswer, correctAnswer) => {
+                userAnswers.push({
+                    selected: selectedAnswer,
+                    correct: correctAnswer,
+                    isCorrect: selectedAnswer === correctAnswer
+                });
+                
+                if(currentQuestionIndex < quizData.questions.length - 1) {
+                    currentQuestionIndex++;
+                    showQuestion(currentQuestionIndex);
+                } else {
+                    endQuiz(quizId, userAnswers);
+                }
+            };
+
+            const handleTimeout = (index) => {
+                userAnswers.push({
+                    selected: null,
+                    correct: quizData.questions[index].correctAnswer,
+                    isCorrect: false
+                });
+                
+                if(currentQuestionIndex < quizData.questions.length - 1) {
+                    currentQuestionIndex++;
+                    showQuestion(currentQuestionIndex);
+                } else {
+                    endQuiz(quizId, userAnswers);
+                }
+            };
+
+            const endQuiz = async (quizId, answers) => {
+                const score = answers.filter(a => a.isCorrect).length * 10;
+                
+                await db.collection('results').add({
+                    userId: currentUser.uid,
+                    quizId,
+                    score,
+                    answers,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                document.body.removeChild(quizContainer);
+                document.getElementById('dashboard').style.display = 'block';
+                showResults(score, answers);
+            };
+
+            const showResults = (score, answers) => {
+                const resultsDiv = document.createElement('div');
+                resultsDiv.className = 'results-container';
+                resultsDiv.innerHTML = `
+                    <h2>Your Score: ${score}/100</h2>
+                    <h3>Question-wise Breakdown:</h3>
+                `;
+
+                answers.forEach((answer, index) => {
+                    resultsDiv.innerHTML += `
+                        <div class="answer ${answer.isCorrect ? 'correct' : 'incorrect'}">
+                            <p>Q${index + 1}: ${answer.isCorrect ? '✓' : '✗'}</p>
+                            ${!answer.isCorrect ? `
+                                <p>Your answer: ${answer.selected || 'No answer'}</p>
+                                <p>Correct answer: ${answer.correct}</p>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+
+                document.getElementById('content-area').replaceChildren(resultsDiv);
+                showContent('results');
+            };
+
+            // Start first question
+            showQuestion(0);
+        }
+
+        // Update the showContent function to include Join Quiz button
+        async function showContent(section) {
+            const contentArea = document.getElementById('content-area');
+            contentArea.innerHTML = '';
+
+            switch(section) {
+                case 'join-quiz':
+                    contentArea.innerHTML = `
+                        <h2>Join Quiz</h2>
+                        <button class="btn" onclick="startQuiz()">Enter Quiz Code</button>
+                    `;
+                    break;
 
         // Results Viewing
         async function viewResults(quizId) {
