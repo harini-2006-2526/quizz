@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard | HRM Quiz</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Orbitron', sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            color: #00fff0;
+        }
+
+        .box {
+            background: rgba(0, 0, 0, 0.85);
+            padding: 50px;
+            border-radius: 15px;
+            box-shadow: 0 0 30px #00fff0;
+            width: 500px;
+            text-align: center;
+            animation: fadeIn 1s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        p {
+            margin-bottom: 30px;
+            color: #ccc;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            margin: 10px;
+            background-color: #00fff0;
+            color: #000;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background-color: #00cfc4;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+</head>
+<body>
+    <div class="box">
+        <h2>Join Quiz Session</h2>
+        <form id="joinForm">
+            <input type="text" id="quizCode" placeholder="Enter Quiz Code" required>
+            <button type="submit">Join Quiz</button>
+        </form>
+    </div>
+
+    <script src="/js/firebase-config.js"></script>
+    <script>
+        document.getElementById('joinForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const code = document.getElementById('quizCode').value.toUpperCase();
+
+            const snapshot = await db.collection('quizzes')
+                .where('code', '==', code)
+                .get();
+
+            if (snapshot.empty) {
+                alert('Invalid quiz code!');
+                return;
+            }
+
+            const quizId = snapshot.docs[0].id;
+            window.location.href = `/quiz-session.html?id=${quizId}`;
+        });
+    </script>
+</body>
+</html>

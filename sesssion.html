@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard | HRM Quiz</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Orbitron', sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            color: #00fff0;
+        }
+
+        .box {
+            background: rgba(0, 0, 0, 0.85);
+            padding: 50px;
+            border-radius: 15px;
+            box-shadow: 0 0 30px #00fff0;
+            width: 500px;
+            text-align: center;
+            animation: fadeIn 1s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        p {
+            margin-bottom: 30px;
+            color: #ccc;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            margin: 10px;
+            background-color: #00fff0;
+            color: #000;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background-color: #00cfc4;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+</head>
+<body>
+    <div class="quiz-container">
+        <div class="timer" id="timer">Time Left: --</div>
+        <div class="question-box">
+            <div class="question-text" id="questionText"></div>
+            <div class="options-container" id="optionsContainer"></div>
+        </div>
+        <div class="navigation">
+            <span class="question-counter" id="questionCounter"></span>
+            <button class="nav-btn" id="nextBtn">Next →</button>
+        </div>
+    </div>
+
+    <script src="/js/firebase-config.js"></script>
+    <script>
+        let currentQuestionIndex = 0;
+        let timerId;
+        let quizData;
+        let userAnswers = [];
+        let quizId;
+
+        auth.onAuthStateChanged(async user => {
+            if (!user) window.location.href = '/login.html';
+            
+            quizId = new URLSearchParams(window.location.search).get('id');
+            const quizDoc = await db.collection('quizzes').doc(quizId).get();
+            
+            if (!quizDoc.exists) {
+                alert('Quiz not found!');
+                window.location.href = '/dashboard.html';
+                return;
+            }
+
+            quizData = quizDoc.data();
+            loadQuestion();
+            startTimer(quizData.questions[currentQuestionIndex].time);
+        });
+
+        function loadQuestion() {
+            const currentQ = quizData.questions[currentQuestionIndex];
+            document.getElementById('questionText').textContent = currentQ.question;
+            document.getElementById('questionCounter').textContent = 
+                `Question ${currentQuestionIndex + 1} of ${quizData.questions.length}`;
+
+            const optionsContainer = document.getElementById('optionsContainer');
+            optionsContainer.innerHTML = '';
+            
+            currentQ.options.forEach((option, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.textContent = option;
+                btn.onclick = () => handleAnswer(option, currentQ.correctAnswer);
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function handleAnswer(selected, correct) {
+            clearInterval(timerId);
+            userAnswers.push({
+                question: quizData.questions[currentQuestionIndex].question,
+                selected,
+                correct,
+                isCorrect: selected === correct
+            });
+            document.getElementById('nextBtn').disabled = false;
+        }
+
+        document.getElementById('nextBtn').addEventListener('click', () => {
+            currentQuestionIndex++;
+            if(currentQuestionIndex < quizData.questions.length) {
+                document.getElementById('nextBtn').disabled = true;
+                loadQuestion();
+                startTimer(quizData.questions[currentQuestionIndex].time);
+            } else {
+                saveResults();
+            }
+        });
+
+        function startTimer(seconds) {
+            let timeLeft = seconds;
+            const timerElement = document.getElementById('timer');
+            
+            const updateTimer = () => {
+                timerElement.textContent = `Time Left: ${timeLeft}s`;
+                if(timeLeft <= 0) {
+                    clearInterval(timerId);
+                    handleTimeout();
+                }
+                timeLeft--;
+            };
+
+            updateTimer();
+            timerId = setInterval(updateTimer, 1000);
+        }
+
+        async function saveResults() {
+            const score = userAnswers.filter(a => a.isCorrect).length * 10;
+            
+            await db.collection('results').add({
+                userId: auth.currentUser.uid,
+                quizId,
+                score,
+                answers: userAnswers,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            window.location.href = `/results.html?quizId=${quizId}&score=${score}`;
+        }
+    </script>
+</body>
+</html>

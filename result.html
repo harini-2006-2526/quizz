@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard | HRM Quiz</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Orbitron', sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            color: #00fff0;
+        }
+
+        .box {
+            background: rgba(0, 0, 0, 0.85);
+            padding: 50px;
+            border-radius: 15px;
+            box-shadow: 0 0 30px #00fff0;
+            width: 500px;
+            text-align: center;
+            animation: fadeIn 1s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        p {
+            margin-bottom: 30px;
+            color: #ccc;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            margin: 10px;
+            background-color: #00fff0;
+            color: #000;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background-color: #00cfc4;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<head>
+    <meta charset="UTF-8">
+    <title>Results | QuizQuest</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="box">
+        <h2>Your Quiz Results</h2>
+        <div id="resultDetails"></div>
+        <div id="feedbackSection" class="hidden">
+            <textarea id="feedbackInput" placeholder="Enter feedback..."></textarea>
+            <button onclick="submitFeedback()">Submit Feedback</button>
+        </div>
+    </div>
+
+    <script src="/js/firebase-config.js"></script>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const quizId = urlParams.get('quizId');
+        const score = urlParams.get('score');
+
+        auth.onAuthStateChanged(async user => {
+            if (!user) window.location.href = '/login.html';
+
+            // Get user role
+            const userDoc = await db.collection('users').doc(user.uid).get();
+            const isHR = userDoc.data().isHR;
+
+            // Display results
+            const resultDetails = document.getElementById('resultDetails');
+            resultDetails.innerHTML = `
+                <h3>Score: ${score}/100</h3>
+                <div class="answers-list"></div>
+            `;
+
+            // Load detailed answers
+            const resultsSnapshot = await db.collection('results')
+                .where('userId', '==', user.uid)
+                .where('quizId', '==', quizId)
+                .get();
+
+            resultsSnapshot.forEach(doc => {
+                const data = doc.data();
+                const answersList = document.querySelector('.answers-list');
+                data.answers.forEach((answer, index) => {
+                    answersList.innerHTML += `
+                        <div class="answer ${answer.isCorrect ? 'correct' : 'incorrect'}">
+                            <p>Q${index + 1}: ${answer.question}</p>
+                            <p>Your answer: ${answer.selected || 'No answer'}</p>
+                            <p>Correct answer: ${answer.correct}</p>
+                        </div>
+                    `;
+                });
+            });
+
+            // Show feedback section for HR
+            if(isHR) {
+                document.getElementById('feedbackSection').classList.remove('hidden');
+            }
+        });
+
+        async function submitFeedback() {
+            const feedback = document.getElementById('feedbackInput').value;
+            await db.collection('results').doc(`${auth.currentUser.uid}_${quizId}`).update({
+                feedback: feedback
+            });
+            alert('Feedback submitted successfully!');
+        }
+    </script>
+</body>
+</html>

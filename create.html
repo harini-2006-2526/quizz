@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard | HRM Quiz</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Orbitron', sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            color: #00fff0;
+        }
+
+        .box {
+            background: rgba(0, 0, 0, 0.85);
+            padding: 50px;
+            border-radius: 15px;
+            box-shadow: 0 0 30px #00fff0;
+            width: 500px;
+            text-align: center;
+            animation: fadeIn 1s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        p {
+            margin-bottom: 30px;
+            color: #ccc;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            margin: 10px;
+            background-color: #00fff0;
+            color: #000;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background-color: #00cfc4;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+</head>
+<body>
+    <div class="box">
+        <h2>Create New Quiz</h2>
+        <form id="quizForm">
+            <input type="text" id="quizTitle" placeholder="Quiz Title" required>
+            <div id="questionsContainer">
+                <div class="question">
+                    <input type="text" placeholder="Question" required>
+                    <div class="options">
+                        <input type="text" placeholder="Option 1" required>
+                        <input type="text" placeholder="Option 2" required>
+                        <input type="text" placeholder="Option 3" required>
+                        <input type="text" placeholder="Option 4" required>
+                    </div>
+                    <select class="correct-answer">
+                        <option value="0">Option 1</option>
+                        <option value="1">Option 2</option>
+                        <option value="2">Option 3</option>
+                        <option value="3">Option 4</option>
+                    </select>
+                    <input type="number" placeholder="Time (seconds)" required>
+                </div>
+            </div>
+            <button type="button" onclick="addQuestion()">Add Question</button>
+            <button type="submit">Create Quiz</button>
+        </form>
+    </div>
+
+    <script src="/js/firebase-config.js"></script>
+    <script>
+        function addQuestion() {
+            const container = document.getElementById('questionsContainer');
+            const div = document.createElement('div');
+            div.className = 'question';
+            div.innerHTML = `
+                <input type="text" placeholder="Question" required>
+                <div class="options">
+                    <input type="text" placeholder="Option 1" required>
+                    <input type="text" placeholder="Option 2" required>
+                    <input type="text" placeholder="Option 3" required>
+                    <input type="text" placeholder="Option 4" required>
+                </div>
+                <select class="correct-answer">
+                    <option value="0">Option 1</option>
+                    <option value="1">Option 2</option>
+                    <option value="2">Option 3</option>
+                    <option value="3">Option 4</option>
+                </select>
+                <input type="number" placeholder="Time (seconds)" required>
+            `;
+            container.appendChild(div);
+        }
+
+        document.getElementById('quizForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const quizData = {
+                title: document.getElementById('quizTitle').value,
+                questions: [],
+                code: Math.random().toString(36).substr(2, 8).toUpperCase(),
+                createdBy: auth.currentUser.uid,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            document.querySelectorAll('.question').forEach(question => {
+                const inputs = question.querySelectorAll('input');
+                const options = Array.from(question.querySelectorAll('.options input')).map(opt => opt.value);
+                const correctAnswer = options[question.querySelector('.correct-answer').value];
+                
+                quizData.questions.push({
+                    question: inputs[0].value,
+                    options: options,
+                    correctAnswer: correctAnswer,
+                    time: parseInt(inputs[inputs.length-1].value)
+                });
+            });
+
+            await db.collection('quizzes').add(quizData);
+            alert(`Quiz created! Share code: ${quizData.code}`);
+            window.location.href = '/dashboard.html';
+        });
+    </script>
+</body>
+</html>
